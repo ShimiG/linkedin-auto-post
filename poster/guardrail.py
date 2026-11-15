@@ -107,6 +107,39 @@ def borrowed_first_person(post, author, news_items, threshold=0.6, min_words=4):
     return hits
 
 
+# The poster describing their own experience: what they build, use, ran into, need or do often.
+_ADVERBS = r"(?:often|always|constantly|usually|regularly|recently|still|also|frequently|sometimes|keep|kept|just)\s+"
+_DID = (r"build|built|building|use|used|using|hit|hitting|ran|run|running|work|worked|working|deploy|deployed|need|needed|"
+        r"see|saw|seen|face|faced|spend|spent|wrote|write|ship|shipped|tried|try|switched|rely|relied|deal|dealt|struggle|"
+        r"struggled|notice|noticed|watch|watched|integrate|integrated|design|designed|automate|automated|run into|ran into|"
+        r"learned|learnt|found|wish|wished|remember")
+EXPERIENCE_RE = re.compile(
+    rf"\b(?:when(?:ever)? I|every time I|in my (?:own )?(?:work|day|job|experience|projects?|agents?|pipelines?|automations?|team|code)|"
+    rf"my (?:own )?(?:agents?|pipelines?|automations?|workflows?|clients?|team|projects?|code|stack|bots?)|"
+    rf"I(?:'ve|’ve| have| had|'m|’m| am)?\s+(?:{_ADVERBS})*(?:{_DID}))\b", re.I)
+
+
+def _stems(text):
+    return {w[:5] for w in content_words(text)}
+
+
+def claimed_experience(post, author, topic, threshold=0.6):
+    """Sentences in which the poster claims an experience ("When I build agents, I constantly hit that ceiling")
+    that the profile and the author's notes do not back. Only news, fact and "On this day" posts are checked:
+    project and own-topic posts are about the poster's own work."""
+    if topic.get("kind") not in ("news", "fact", "onthisday"):
+        return []
+    mine = _stems(" ".join(f"{k} {v}" for k, v in (author or {}).items()) + " " + str(topic.get("angle", "")))
+    hits = []
+    for sent in re.split(r"(?<=[.!?])\s+|\n+", post):
+        if not EXPERIENCE_RE.search(sent):
+            continue
+        words = _stems(sent)
+        if not words or len(words & mine) / len(words) < threshold:
+            hits.append(sent.strip()[:120])
+    return hits
+
+
 def _words(text):
     return re.findall(r"[a-z0-9'’]+", text.lower())
 
@@ -167,6 +200,10 @@ def check(post, *, author, topic, news_items, today, max_chars, max_hashtags, si
         if borrowed:
             return fail("borrowed_first_person", borrowed, "borrowed_first_person: " + " | ".join(borrowed))
 
+    claimed = claimed_experience(body, author, topic)
+    if claimed:
+        return fail("claimed_experience", claimed, "claimed_experience: " + " | ".join(claimed))
+
     tags = HASHTAG_RE.findall(body)
     if len(tags) > max_hashtags:
         return fail("too_many_hashtags", [t.strip() for t in tags], f"too_many_hashtags: {len(tags)} > {max_hashtags}")
@@ -180,6 +217,10 @@ def retry_note(res):
            "fact_check": "used figures not present in the input",
            "borrowed_first_person": "retold the article author's own experience in the first person, as if it were yours",
            "copied_from_example": "copied wording from a style example"}.get(res.reason)
+    if res.reason == "claimed_experience":
+        return (f"\n\nYour previous draft claimed experiences of the author that are not in author or angle: {' | '.join(res.offending)}. "
+                "Do not say what the author builds, uses, ran into or does often. Make the link to AI and automation in general terms "
+                "(\"agents that call several APIs hit the same limit\") or as an opinion (\"I think…\"), or ask the readers.")
     if res.reason == "borrowed_first_person":
         return (f"\n\nYour previous draft {why}: {' | '.join(res.offending)}. Those are the article author's experiences. "
                 "Attribute them in the third person (\"the author writes…\", \"a developer found…\") and keep \"I\" for facts from author only.")

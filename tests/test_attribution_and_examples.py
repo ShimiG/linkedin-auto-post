@@ -114,3 +114,31 @@ def test_example_command_saves_english_part(board):
     review.save_example({"number": 9, "body": body, "labels": [{"name": "draft"}, {"name": "published"}], "title": "x"}, "")
     put = [e for e in board if e[0] == "put_file"][0]
     assert "source: own" in put[1][1] and put[1][1].rstrip().endswith("The English post.") and "הפוסט" not in put[1][1]
+
+
+# --------------------------------------------------------------------------- invented experience
+PROFILE = {"name": "N", "headline": "AI automation developer", "focus": "building AI agents and automations"}
+
+
+def test_invented_experience_is_sent_back():
+    for sent in ("When I build customer-facing AI agents that call multiple REST APIs, I constantly hit that ceiling.",
+                 "I often need the same raw speed that Fortran provides.",
+                 "In my agents, retries matter more than speed."):
+        assert guardrail.claimed_experience(sent, PROFILE, {"kind": "onthisday"}) == [sent], sent
+    for sent in ("I build AI agents and automations.",                       # the profile says so
+                 "I think this still matters for anyone building agents.",   # an opinion
+                 "Agents that call several APIs hit the same limit.",        # general
+                 "What would you change in your pipelines?"):
+        assert guardrail.claimed_experience(sent, PROFILE, {"kind": "fact"}) == [], sent
+    backed = {"kind": "news", "angle": "I hit rate limits in my agents every week"}
+    assert guardrail.claimed_experience("In my agents, rate limits hit every week.", PROFILE, backed) == []
+    for kind in ("project", "queued"):  # the poster's own work
+        assert guardrail.claimed_experience("When I build agents, I constantly hit that ceiling.", PROFILE, {"kind": kind}) == []
+
+
+def test_check_rejects_invented_experience_with_a_retry_note():
+    post = "Amdahl's law still sets the limit.\n\nWhen I build agents that call several APIs, I constantly hit that ceiling.\n\nWhere do you hit it?"
+    res = guardrail.check(post, author=PROFILE, topic={"kind": "onthisday", "title": "Amdahl's law"}, news_items=[],
+                          today=date(2026, 11, 16), max_chars=1300, max_hashtags=3)
+    assert not res.ok and res.reason == "claimed_experience"
+    assert "general terms" in guardrail.retry_note(res)
