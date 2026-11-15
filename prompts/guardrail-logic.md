@@ -13,6 +13,7 @@ Checks, in order (the first failure wins; each failure is retried up to `llm.max
 5. `unverified_source`: a known outlet or company (TechCrunch, Reuters, The Verge, Bloomberg, Wired, GitHub, Stack Overflow, Hacker News, Wikipedia and others) named in the post must appear in the sources.
 6. `copied_from_example`: the post shares `examples.copy_ngram` (8) consecutive words with a saved writing example. Examples are for style only.
 7. `borrowed_first_person` (news posts only): a sentence with "I / my / me" whose content words mostly (60%+) come from the article and not from your profile. That is the article author's experience retold as yours; the retry asks for third-person attribution ("a developer wrote that…").
+   `claimed_experience` (news, fact and "On this day" posts): a sentence in which you claim an experience ("When I build agents…", "I often need…", "in my agents…") whose words mostly do not come from your profile or your notes. The retry asks for the link to AI in general terms or as an opinion. Project and own-topic posts are about your own work and are not checked.
 8. `too_many_hashtags`: more `#tags` than `post.max_hashtags`.
 
 ## Translation checks (`check_translation`)
