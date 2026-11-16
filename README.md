@@ -79,6 +79,7 @@ gh secret set PROFILE_YML < profile.yml
 gh secret set CLOUDFLARE_ACCOUNT_ID    # optional: AI images
 gh secret set CLOUDFLARE_API_TOKEN
 gh secret set PROJECTS_TOKEN           # optional: project posts about private repos (fine-grained token, those repos, Contents: read-only)
+gh secret set LINKEDIN_PERSON_URN      # optional: urn:li:person:…; without it the bot looks it up with the token (openid scope)
 gh variable set LINKEDIN_TOKEN_EXPIRES --body 2027-01-08   # the date 60 days after you generated the token
 ```
 Optional variables: `PUBLISH_MODE` (`simulated` or `linkedin`; overrides `publish_mode` in `config.yml`, which is currently `linkedin`, so set it to `simulated` before trying it out) and `TIMEZONE` (for "today" in prompts and "On this day", and the clock `/schedule` times are read in, e.g. `Europe/London`).
